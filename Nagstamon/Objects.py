@@ -34,6 +34,8 @@ class GenericObject(object):
         self.hostid = ''
         self.name = ''
         self.status = ''
+       # self.comment = ''
+        self.comment = ''
         self.status_information = ''
         # default state is soft, to be changed by status_type check
         self.status_type = ''
@@ -60,6 +62,8 @@ class GenericObject(object):
 
     def is_passive_only(self):
         return bool(self.passiveonly)
+    def is_comment(self):
+        return bool(self.comment)
 
     def is_flapping(self):
         return bool(self.flapping)

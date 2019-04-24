@@ -93,7 +93,7 @@ NON_LINUX = ('Darwin', 'Windows')
 INVALID_CHARACTERS = {'\\': '_backslash_',
                       '/': '_slash_',
                       ':': '_colon_',
-                      '*': '_asterisk_',
+                      '*': '_aterisk_',
                       '?': '_question_mark_',
                       '"': '_double_quotes_',
                       '<': '_less_than_',
@@ -104,11 +104,11 @@ class AppInfo(object):
     """
         contains app information previously located in GUI.py
     """
-    NAME = 'Nagstamon'
-    VERSION = '3.3-20190415'
+    NAME = 'Rickstamon - BUY adminRL SNACKS'
+    VERSION = '1.3.3.7 Build 3'
     WEBSITE = 'https://nagstamon.ifw-dresden.de'
     COPYRIGHT = '©2008-2019 Henri Wahl et al.'
-    COMMENTS = 'Nagios status monitor for your desktop'
+    COMMENTS = 'Nagios status monitor for your desktop - modified by adminRL'
     # version URL depends on version string
     if 'alpha' in VERSION.lower() or \
             'beta' in VERSION.lower() or \
