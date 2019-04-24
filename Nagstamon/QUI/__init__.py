@@ -1,6 +1,6 @@
 # encoding: utf-8
 # Nagstamon - Nagios status monitor for your desktop
-# Copyright (C) 2008-2019 Henri Wahl <h.wahl@ifw-dresden.de> et al.
+# Copyright (C) 2008-2019 adminRL Liu <adminRL@onenet.co.nz> et al.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -163,7 +163,9 @@ HEADERS = OrderedDict([('host', {'header': 'Host',
                                        'column': 5}),
                        ('duration', {'header': 'Duration',
                                      'column': 6}),
-                       ('attempt', {'header': 'Attempt',
+                       #('attempt', {'header': 'Attempt',
+                                    #'column': 7}),
+                       ('comment', {'header': 'Comment - RL is GOD',
                                     'column': 7}),
                        ('status_information', {'header': 'Status Information',
                                                'column': 8}),
@@ -2048,14 +2050,12 @@ class StatusWindow(QWidget):
         for state in ['DOWN', 'UNREACHABLE', 'DISASTER', 'CRITICAL', 'HIGH', 'AVERAGE', 'WARNING', 'INFORMATION', 'UNKNOWN']:
             if current_status_count[state] > 0:
                 message += '{0} {1} '.format(str(current_status_count[state]), state)
-
-        if not message == '':
-            # due to mysterious DBus-Crashes
-            # see https://github.com/HenriWahl/Nagstamon/issues/320
-            try:
-                dbus_connection.show(AppInfo.NAME, message)
-            except Exception:
-                traceback.print_exc(file=sys.stdout)
+        # due to mysterious DBus-Crashes
+        # see https://github.com/HenriWahl/Nagstamon/issues/320
+        try:
+            dbus_connection.show(AppInfo.NAME, message)
+        except Exception:
+            traceback.print_exc(file=sys.stdout)
 
     @pyqtSlot()
     def raise_window_on_all_desktops(self):
@@ -2776,7 +2776,7 @@ class ServerVBox(QVBoxLayout):
         #self.label = QLabel(parent=parent)
         self.label = ClosingLabel(parent=parent)
         self.update_label()
-        self.button_monitor = PushButton_BrowserURL(text='Monitor', parent=parent, server=self.server, url_type='monitor')
+        self.button_monitor = PushButton_BrowserURL(text='Tactical Overview', parent=parent, server=self.server, url_type='monitor')
         self.button_hosts = PushButton_BrowserURL(text='Hosts', parent=parent, server=self.server, url_type='hosts')
         self.button_services = PushButton_BrowserURL(text='Services', parent=parent, server=self.server, url_type='services')
         self.button_history = PushButton_BrowserURL(text='History', parent=parent, server=self.server, url_type='history')
@@ -3510,7 +3510,7 @@ class TreeView(QTreeView):
 
             self.action_menu.addSeparator()
             if 'Monitor' in self.server.MENU_ACTIONS and len(list_rows) == 1:
-                action_monitor = QAction('Monitor', self)
+                action_monitor = QAction('Check out this host or service', self)
                 action_monitor.triggered.connect(self.action_monitor)
                 self.action_menu.addAction(action_monitor)
                 
@@ -3873,10 +3873,8 @@ class TreeView(QTreeView):
                 # check if status changed and notification is necessary
                 # send signal because there are unseen events
                 # status has changed if there are unseen events in the list OR (current status is up AND has been changed since last time)
-                bla = self.server.get_events_history_count()
                 if (self.server.get_events_history_count() > 0) or\
                    ((self.server.worst_status_current == 'UP') and (self.server.worst_status_current != self.server.worst_status_last)):
-                    pass
                     self.status_changed.emit(self.server.name, self.server.worst_status_diff, self.server.worst_status_current)
 
 
@@ -4010,10 +4008,6 @@ class TreeView(QTreeView):
                             self.change_label_status.emit('Connection error', 'error')
                         elif status.error.startswith('requests.exceptions.ReadTimeout'):
                             self.change_label_status.emit('Connection timeout', 'error')
-                        elif status.error.startswith('requests.exceptions.ProxyError'):
-                            self.change_label_status.emit('Proxy error', 'error')
-                        elif status.error.startswith('requests.exceptions.MaxRetryError'):
-                            self.change_label_status.emit('Max retry error', 'error')
                         elif self.server.tls_error:
                             self.change_label_status.emit('SSL/TLS problem', 'critical')
                         elif self.server.status_code in self.server.STATUS_CODES_NO_AUTH or\
@@ -6122,7 +6116,7 @@ class Dialog_Downtime(Dialog):
         
         for i in range(len(self.host_list)):
             if self.service_list[i] == "":
-                str = str + 'Host <b>%s</b><br>' % (self.host_list[i])
+                str = str + 'Host <b>%s</b><br>' % (host_list[i])
             else:
                 str = str + 'Service <b>%s</b> on host <b>%s</b><br>' % (self.service_list[i], self.host_list[i])
         
