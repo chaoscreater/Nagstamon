@@ -71,6 +71,7 @@ class GenericServer(object):
     # 'disabled.gif' is in Nagios for hosts the same as 'passiveonly.gif' for services
     STATUS_MAPPING = {'ack.gif': 'acknowledged',
                       'passiveonly.gif': 'passiveonly',
+                      'comment.gif': 'comment',							
                       'disabled.gif': 'passiveonly',
                       'ndisabled.gif': 'notifications_disabled',
                       'downtime.gif': 'scheduled_downtime',
@@ -83,7 +84,7 @@ class GenericServer(object):
     SUBMIT_CHECK_RESULT_ARGS = ['check_output', 'performance_data']
 
     # URLs for browser shortlinks/buttons on popup window
-    BROWSER_URLS = {'monitor': '$MONITOR$',
+    BROWSER_URLS = {'monitor': '$MONITOR$/nagios/cgi-bin/tac.cgi',
                     'hosts': '$MONITOR-CGI$/status.cgi?hostgroup=all&style=hostdetail&hoststatustypes=12',
                     'services': '$MONITOR-CGI$/status.cgi?host=all&servicestatustypes=253',
                     'history': '$MONITOR-CGI$/history.cgi?host=all'}
@@ -95,7 +96,7 @@ class GenericServer(object):
 
     # default parser for BeautifulSoup - the rediscovered lxml causes trouble for Centreon so there should be choice
     # see https://github.com/HenriWahl/Nagstamon/issues/431
-    PARSER = 'lxml'
+    PARSER = 'html.parser'
 
     def __init__(self, **kwds):
         # add all keywords to object, every mode searchs inside for its favorite arguments/keywords
@@ -119,7 +120,7 @@ class GenericServer(object):
         self.isChecking = False
         self.CheckingForNewVersion = False
         # store current, last and difference of worst state for notification
-        self.worst_status_diff = self.worst_status_current = self.worst_status_last = 'UP'
+        self.worst_status_diff = self.worst_status_current = self.worst_status_last = ''
         self.nagitems_filtered_list = list()
         self.nagitems_filtered = {'services': {'DISASTER': [], 'CRITICAL': [], 'HIGH': [],
             'AVERAGE': [], 'WARNING': [], 'INFORMATION': [], 'UNKNOWN': []},
@@ -617,6 +618,7 @@ class GenericServer(object):
                                     n['status_information'] = str(tds[5].text).replace('\n', ' ').replace('\t', ' ').strip()
                             # status flags
                             n['passiveonly'] = False
+                            n['comment'] = False
                             n['notifications_disabled'] = False
                             n['flapping'] = False
                             n['acknowledged'] = False
@@ -647,6 +649,7 @@ class GenericServer(object):
                                 # ##self.new_hosts[new_host].status_information = n['status_information'].encode('utf-8')
                                 self.new_hosts[new_host].status_information = n['status_information']
                                 self.new_hosts[new_host].passiveonly = n['passiveonly']
+                                self.new_hosts[new_host].comment = n['comment']
                                 self.new_hosts[new_host].notifications_disabled = n['notifications_disabled']
                                 self.new_hosts[new_host].flapping = n['flapping']
                                 self.new_hosts[new_host].acknowledged = n['acknowledged']
@@ -716,6 +719,8 @@ class GenericServer(object):
                             n['service'] = str(tds[1](text=not_empty)[0])
                             # status
                             n['status'] = str(tds[2](text=not_empty)[0])
+                            # comment
+                           # n['comment'] = str(tds[7](text=not_empty)[0])
                             # last_check
                             n['last_check'] = str(tds[3](text=not_empty)[0])
                             # duration
@@ -731,6 +736,7 @@ class GenericServer(object):
                                 n['status_information'] = str(tds[6].text).replace('\n', ' ').replace('\t', ' ').strip()
                             # status flags
                             n['passiveonly'] = False
+                            n['comment'] = False
                             n['notifications_disabled'] = False
                             n['flapping'] = False
                             n['acknowledged'] = False
@@ -775,6 +781,7 @@ class GenericServer(object):
                                 self.new_hosts[n['host']].services[new_service].attempt = n['attempt']
                                 self.new_hosts[n['host']].services[new_service].status_information = n['status_information']
                                 self.new_hosts[n['host']].services[new_service].passiveonly = n['passiveonly']
+                                self.new_hosts[n['host']].services[new_service].comment = n['comment']
                                 self.new_hosts[n['host']].services[new_service].notifications_disabled = n[
                                     'notifications_disabled']
                                 self.new_hosts[n['host']].services[new_service].flapping = n['flapping']
@@ -845,8 +852,8 @@ class GenericServer(object):
                           status_code=self.status_code)
 
         if (self.status == 'ERROR' or
-            self.status_description != '' or
-            self.status_code >= 400):
+         self.status_description != '' or
+         self.status_code >= 400):
 
             # ask for password if authorization failed
             if 'HTTP Error 401' in self.status_description or \
@@ -918,6 +925,10 @@ class GenericServer(object):
                         self.Debug(server=self.get_name(), debug='Filter: PASSIVEONLY ' + str(host.name))
                     host.visible = False
 
+                if host.comment is True and conf.filter_hosts_services_disabled_checks is True:
+                    if conf.debug_mode:
+                        self.Debug(server=self.get_name(), debug='Filter: COMMENT ' + str(host.name))
+                    host.visible = False
                 if host.scheduled_downtime is True and conf.filter_hosts_services_maintenance is True:
                     if conf.debug_mode:
                         self.Debug(server=self.get_name(), debug='Filter: DOWNTIME ' + str(host.name))
@@ -982,6 +993,8 @@ class GenericServer(object):
                     host.host_flags += 'F'
                 if host.passiveonly:
                     host.host_flags += 'P'
+                if host.comment:
+                    host.host_flags += 'C'
 
             for service in host.services.values():
                 # add service name for sorting
@@ -1007,6 +1020,11 @@ class GenericServer(object):
                                    debug='Filter: PASSIVEONLY ' + str(host.name) + ';' + str(service.name))
                     service.visible = False
 
+                if service.comment is True and conf.filter_hosts_services_disabled_checks is True:
+                    if conf.debug_mode:
+                        self.Debug(server=self.get_name(),
+                                   debug='Filter: COMMENT ' + str(host.name) + ';' + str(service.name))
+                    service.visible = False
                 if service.scheduled_downtime is True and conf.filter_hosts_services_maintenance is True:
                     if conf.debug_mode:
                         self.Debug(server=self.get_name(),
@@ -1217,6 +1235,8 @@ class GenericServer(object):
                     service.service_flags += 'F'
                 if service.passiveonly:
                     service.service_flags += 'P'
+                if service.comment:
+                    service.service_flags += 'C'
 
                 # Add host of service flags for status icons in treeview
                 if host.acknowledged:
@@ -1227,6 +1247,8 @@ class GenericServer(object):
                     service.host_flags += 'F'
                 if host.passiveonly:
                     service.host_flags += 'P'
+                if host.comment:
+                    service.host_flags += 'C'
 
         # find out if there has been some status change to notify user
         # compare sorted lists of filtered nagios items
@@ -1373,10 +1395,6 @@ class GenericServer(object):
                 # use session only for connections to monitor servers, other requests like looking for updates
                 # should go out without credentials
                 if no_auth is False:
-                    # check if there is really a session
-                    if not self.session:
-                        self.reset_HTTP()
-                        self.init_HTTP()
                     # most requests come without multipart/form-data
                     if multipart is False:
                         if cgi_data is None:
